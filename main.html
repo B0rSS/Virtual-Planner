@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVOda</title>
+    <link rel="stylesheet" type="text/css" href="main.css" />
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div id="menuToggle">
+        <div id="toggleIcon" class="hamburger"></div>
+    </div>
+
+    <div id="controls">
+        <div class="control-group">
+            <label for="rectWidth">En:</label>
+            <input type="number" id="rectWidth" value="400">
+        </div>
+        
+        <div class="control-group">
+            <label for="rectHeight">Boy:</label>
+            <input type="number" id="rectHeight" value="400">
+        </div>
+
+        <div class="control-group">
+            <button id="createRect">Oda Oluştur</button>
+        </div>
+
+        <div class="control-group">
+            <button id="deleteRectButton">Oda Sil</button>
+        </div>
+
+        <div class="control-group">
+            <button id="create3DRoom">3D</button>
+        </div>
+
+        <div id="dynamicDimensions">
+            En: 0 | Boy: 0
+        </div>
+
+    </div>
+
+
+
+<!-- Aç/Kapat Düğmesi -->
+<button class="open-catalog">Katalogu Aç</button>
+
+<!-- Sağ Panel -->
+<div class="catalog-container" id="catalog">
+  <div class="catalog-header">
+    <h3>Mobilya Kataloğu</h3>
+        <button id="closeCatalog">Kapat</button>
+  </div>
+  <div class="filters">
+    <h4>Stil Seç:</h4>
+    <select id="styleFilter">
+      <option value="all">Tüm Stiller</option>
+      <option value="klasik">Klasik</option>
+      <option value="artdeco">Artdeco</option>
+      <option value="modern">Modern</option>
+      <option value="cagdas">Çağdaş</option>
+      <!-- Diğer stiller buraya eklenecek -->
+    </select>
+    <h4>Renk Paleti Seç:</h4>
+    <select id="colorFilter">
+      <option value="all">Tüm Renkler</option>
+      <option value="palet1">Turuncu - Kahverengi - Gri - Buğday</option>
+      <option value="palet2">Kahverengi - Buğday - Gri - Koyu Kahve</option>
+      <option value="palet3">Mavi - Kahverengi - Açık Kahve - Kızıl Kahve</option>
+      <option value="palet4">Siyah - Beyaz - Gri - Kül </option>
+      <option value="palet5">Yeşil - Beyaz - Kızıl Kahve - Gri</option>
+      <option value="palet6">Lacivert - Mavi - Yeşil - Beyaz</option>
+      <!-- Diğer renk paletleri buraya eklenecek -->
+    </select>
+  </div>
+
+  <div class="product-list" id="productList">
+    <!-- Ürünler dinamik olarak buraya yüklenecek -->
+  </div>
+  <!-- Kontrol Düğmeleri -->
+  <div id="custom-controls" class="catalog-controls">
+    <button id="addModelButton">Model Ekle</button>
+    <button id="deleteModelButton">Model Sil</button>
+  </div>
+
+
+</div>
+
+<!-- Rotasyon Butonları -->
+<div class="rotation-buttons" id="rotationButtons" style="display: none;">
+    <button id="rotateLeftButton">Sola Döndür</button>
+    <button id="rotateRightButton">Sağa Döndür</button>
+</div>
+
+
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.167.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.167.1/examples/jsm/"
+          }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+
+    <script type="module">
+        
+
+    /********************THREE JS IMPORTS*********************************/
+
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DragControls } from 'three/addons/controls/DragControls.js';
+        import {TransformControls} from 'three/addons/controls/TransformControls.js';
+       // import {DRACOLoader} from 'three/examples/jsm/loaders/DRACOLoader.js';
+
+
+        let renderer, scene, camera, orbitControls; 
+        let dragControls, objects = [];
+
+        //model yolu için bir dizin
+        const modelPaths = [
+           '/models/sofa2.glb',
+        ];
+
+
+        // Seçilen ürünün ID'sini tutmak için değişken
+        let selectedProductId = null;
+
+        let selectedModelPath = null; // Kullanıcının seçtiği model yolu
+
+        let currentModel = null;     // Sahnedeki mevcut model
+
+        let models = []; // Sahnedeki tüm modelleri takip etmek için dizi
+
+        const loader = new GLTFLoader();
+
+
+    const toggleIcon = document.getElementById('toggleIcon');
+    const controls = document.getElementById('controls');
+
+    // Açılır kapanır işlevi
+    toggleIcon.addEventListener('click', () => {
+        if (controls.classList.contains('hidden')) {
+            controls.classList.remove('hidden');
+            controls.classList.add('visible');
+            toggleIcon.classList.add('open'); // İkon animasyonu için
+        } else {
+            controls.classList.remove('visible');
+            controls.classList.add('hidden');
+            toggleIcon.classList.remove('open'); // İkon animasyonu için
+        }
+    });
+
+/****************************FABRIC JS CODES**************************************************/
+
+        const canvas = new fabric.Canvas('canvas');
+        let activeRect = null;
+       
+        const rectWidthInput = document.getElementById('rectWidth');
+        const rectHeightInput = document.getElementById('rectHeight');
+        const createRectButton = document.getElementById('createRect');
+        const deleteRectButton = document.getElementById('deleteRectButton');
+        const create3DButton = document.getElementById('create3DRoom');
+        const dynamicDimensions = document.getElementById('dynamicDimensions');
+
+        function resizeCanvas() {
+            canvas.setWidth(window.innerWidth);
+            canvas.setHeight(window.innerHeight);
+            drawGrid();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawGrid() {
+            const gridSize = 30;
+            for (let i = 0; i < (canvas.width / gridSize); i++) {
+                canvas.add(new fabric.Line([ i * gridSize, 0, i * gridSize, canvas.height], { stroke: '#ccc', selectable: false }));
+                canvas.add(new fabric.Line([ 0, i * gridSize, canvas.width, i * gridSize], { stroke: '#ccc', selectable: false }));
+            }
+            canvas.sendToBack(...canvas.getObjects());
+        }
+
+        createRectButton.addEventListener('click', function() {
+            const rectWidth = parseInt(rectWidthInput.value);
+            const rectHeight = parseInt(rectHeightInput.value);
+
+            const rect = new fabric.Rect({
+                left: (canvas.width - rectWidth) / 2,
+                top: (canvas.height - rectHeight) / 2,
+                fill: 'azure', 
+                stroke: 'black', 
+                strokeWidth: 6, 
+                width: rectWidth,
+                height: rectHeight,
+                selectable: true,
+                hasControls: true,
+                cornerStyle: 'circle',
+                cornerSize: 10,
+                transparentCorners: false,
+                hasRotatingPoint: false,
+                strokeUniform: true
+            });
+
+            canvas.add(rect);
+            canvas.setActiveObject(rect);
+
+            activeRect = rect;
+            updateDimensionsDisplay(rect);
+            deleteRectButton.style.display = 'block';
+            create3DButton.style.display = 'block';
+
+            rect.on('scaling', function() {
+                updateDimensionsDisplay(rect);
+            });
+
+            rect.on('modified', function() {
+                updateDimensionsDisplay(rect);
+            });
+
+            rect.on('selected', function() {
+                activeRect = rect;
+                updateDimensionsDisplay(rect);
+                deleteRectButton.style.display = 'block';
+                create3DButton.style.display = 'block';
+            });
+
+            rect.on('deselected', function() {
+                activeRect = null;
+                dynamicDimensions.innerHTML = 'En: 0px, Boy: 0px';
+                deleteRectButton.style.display = 'none';
+                create3DButton.style.display = 'none';
+            });
+        });
+
+        function updateDimensionsDisplay(rect) {
+            const width = Math.round(rect.getScaledWidth());
+            const height = Math.round(rect.getScaledHeight());
+            dynamicDimensions.innerHTML = `En: ${width-6} cm, Boy: ${height-6} cm`; //strokewidth 6 olduğundan burada 6 çıkarttık
+        }
+
+        deleteRectButton.addEventListener('click', function() {
+            if (activeRect) {
+                canvas.remove(activeRect);
+                activeRect = null;
+                deleteRectButton.style.display = 'none';
+                create3DButton.style.display = 'none';
+                dynamicDimensions.innerHTML = 'En: 0 cm, Boy: 0 cm';
+            }
+        });
+
+/****************************************************************************************************/
+
+  /************************CATALOG CODES***********************************************/      
+
+        // Aç/Kapat İşlevleri
+    const catalog = document.getElementById('catalog');
+    const openCatalogButton = document.querySelector('.open-catalog');
+    const closeCatalogButton = document.getElementById('closeCatalog');
+
+    openCatalogButton.addEventListener('click', () => {
+      catalog.classList.add('open');
+    });
+
+    closeCatalogButton.addEventListener('click', () => {
+      catalog.classList.remove('open');
+    });
+
+    // Ürün Verileri
+    const products = [
+    { id: 1, name: 'Modern Koltuk1', style: 'modern', color: 'palet1', image: 'images/torino-koltuk.jpg', modelPath: '/models/4.glb' },
+{ id: 2, name: 'Modern Koltuk2', style: 'modern', color: 'palet1', image: 'images/torino-koltuk.jpg', modelPath: '/models/5.glb' },
+{ id: 3, name: 'Modern Koltuk3', style: 'modern', color: 'palet2', image: 'images/torino-koltuk.jpg', modelPath: '/models/6.glb' },
+{ id: 4, name: 'Modern Koltuk4', style: 'modern', color: 'palet3', image: 'images/torino-koltuk.jpg', modelPath: '/models/9.glb' },
+{ id: 5, name: 'Modern Koltuk5', style: 'modern', color: 'palet4', image: 'images/torino-koltuk.jpg', modelPath: '/models/10.glb' },
+{ id: 6, name: 'Modern Koltuk6', style: 'modern', color: 'palet3', image: 'images/torino-koltuk.jpg', modelPath: '/models/12.glb' },
+{ id: 7, name: 'Modern Koltuk7', style: 'modern', color: 'palet4', image: 'images/torino-koltuk.jpg', modelPath: '/models/14.glb' },
+{ id: 8, name: 'Modern Koltuk8', style: 'modern', color: 'palet4', image: 'images/torino-koltuk.jpg', modelPath: '/models/15.glb' },
+{ id: 9, name: 'Modern Koltuk9', style: 'modern', color: 'palet3', image: 'images/torino-koltuk.jpg', modelPath: '/models/16.glb' },
+{ id: 10, name: 'Klasik Masa1', style: 'klasik', color: 'palet4', image: 'images/torino-koltuk.jpg', modelPath: '/models/17.glb' },
+{ id: 11, name: 'Klasik Koltuk1', style: 'klasik', color: 'palet4', image: 'images/torino-koltuk.jpg', modelPath: '/models/18.glb' },
+{ id: 12, name: 'Klasik Koltuk2', style: 'klasik', color: 'palet4', image: 'images/torino-koltuk.jpg', modelPath: '/models/19.glb' },
+{ id: 13, name: 'Klasik Masa2', style: 'klasik', color: 'palet4', image: 'images/torino-koltuk.jpg', modelPath: '/models/20.glb' },
+{ id: 14, name: 'Klasik Koltuk3', style: 'klasik', color: 'palet1', image: 'images/torino-koltuk.jpg', modelPath: '/models/22.glb' },
+{ id: 15, name: 'Klasik Koltuk4', style: 'klasik', color: 'palet2', image: 'images/torino-koltuk.jpg', modelPath: '/models/23.glb' },
+{ id: 16, name: 'Klasik Koltuk5', style: 'klasik', color: 'palet5', image: 'images/torino-koltuk.jpg', modelPath: '/models/24.glb' },
+{ id: 17, name: 'Klasik Koltuk6', style: 'klasik', color: 'palet2', image: 'images/torino-koltuk.jpg', modelPath: '/models/25.glb' },
+{ id: 18, name: 'Klasik Koltuk7', style: 'klasik', color: 'palet1', image: 'images/torino-koltuk.jpg', modelPath: '/models/26.glb' },
+{ id: 19, name: 'Klasik Koltuk8', style: 'klasik', color: 'palet6', image: 'images/torino-koltuk.jpg', modelPath: '/models/27.glb' },
+{ id: 20, name: 'Artdeco Koltuk1', style: 'artdeco', color: 'palet6', image: 'images/torino-koltuk.jpg', modelPath: '/models/29.glb' },
+{ id: 21, name: 'Artdeco Koltuk2', style: 'artdeco', color: 'palet1', image: 'images/torino-koltuk.jpg', modelPath: '/models/30.glb' },
+{ id: 22, name: 'Artdeco Koltuk3', style: 'artdeco', color: 'palet6', image: 'images/torino-koltuk.jpg', modelPath: '/models/31.glb' },
+{ id: 23, name: 'Modern Koltuk10', style: 'modern', color: 'palet5', image: 'images/torino-koltuk.jpg', modelPath: '/models/32.glb' },
+{ id: 24, name: 'Artdeco Koltuk4', style: 'artdeco', color: 'palet4', image: 'images/torino-koltuk.jpg', modelPath: '/models/34.glb' },
+{ id: 25, name: 'Modern Sehpa1', style: 'modern', color: 'palet5', image: 'images/torino-koltuk.jpg', modelPath: '/models/35.glb' },
+{ id: 26, name: 'Modern Sehpa2', style: 'modern', color: 'palet5', image: 'images/torino-koltuk.jpg', modelPath: '/models/37.glb' },
+{ id: 27, name: 'Modern Sehpa3', style: 'artdeco', color: 'palet1', image: 'images/torino-koltuk.jpg', modelPath: '/models/38.glb' },
+{ id: 28, name: 'Modern Masa1', style: 'artdeco', color: 'palet5', image: 'images/torino-koltuk.jpg', modelPath: '/models/39.glb' },
+{ id: 29, name: 'Çağdaş Koltuk1', style: 'klasik', color: 'palet4', image: 'images/torino-koltuk.jpg', modelPath: '/models/40.glb' },
+{ id: 30, name: 'Çağdaş Koltuk2', style: 'klasik', color: 'palet1', image: 'images/torino-koltuk.jpg', modelPath: '/models/42.glb' },
+{ id: 31, name: 'Artdeco Koltuk4', style: 'artdeco', color: 'palet4', image: 'images/torino-koltuk.jpg', modelPath: '/models/43.glb' },
+{ id: 32, name: 'Artdeco Koltuk5', style: 'artdeco', color: 'palet1', image: 'images/torino-koltuk.jpg', modelPath: '/models/44.glb' },
+{ id: 33, name: 'Çağdaş Koltuk3', style: 'cagdas', color: 'palet1', image: 'images/torino-koltuk.jpg', modelPath: '/models/45.glb' },
+
+    ];
+
+    // Ürünleri Listeleme
+    const productList = document.getElementById('productList');
+    const styleFilter = document.getElementById('styleFilter');
+    const colorFilter = document.getElementById('colorFilter');
+
+
+    function loadProducts() {
+      const selectedStyle = styleFilter.value;
+      const selectedColor = colorFilter.value;
+
+      productList.innerHTML = ''; // Listeyi temizle
+
+      const filteredProducts = products.filter(product => {
+        return (selectedStyle === 'all' || product.style === selectedStyle) &&
+               (selectedColor === 'all' || product.color === selectedColor);
+      });
+
+      filteredProducts.forEach(product => {
+        const productElement = document.createElement('div');
+        productElement.classList.add('product');
+        productElement.dataset.id = product.id; // Ürün ID'sini data attribute olarak ekle
+        productElement.innerHTML = `
+          <img src="${product.image}" alt="${product.name}">
+          <h5>${product.name}</h5>
+        `;
+
+      productElement.addEventListener('click', () => {
+
+      selectedModelPath = product.modelPath; // Model yolunu seç
+      selectedProductId = product.id; // Ürünün ID'sini seç
+
+      // Tüm ürünlerdeki seçili sınıfını kaldır
+      document.querySelectorAll('.product').forEach(el => el.classList.remove('selected'));
+
+      // Seçilen ürüne "selected" sınıfı ekle
+      productElement.classList.add('selected');
+    });
+
+
+
+        productList.appendChild(productElement);
+      });
+    }
+
+    // Filtre Değişiklikleri
+    styleFilter.addEventListener('change', loadProducts);
+    colorFilter.addEventListener('change', loadProducts);
+
+    // Sayfa Yüklendiğinde Ürünleri Göster
+    loadProducts();
+
+
+/*********************************************************************************************************/
+
+    /******************************************THREE JS CODES*****************************************************/
+
+        create3DButton.addEventListener('click', function() {
+            if (!activeRect) return;
+
+            const width = Math.round(activeRect.getScaledWidth());
+            const length = Math.round(activeRect.getScaledHeight());
+            const height = 150; // Constant height for the 3D room
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor('thistle'); 
+            renderer.domElement.style.position = 'absolute';
+            renderer.domElement.style.top = '0';
+            renderer.domElement.style.left = '0';
+            document.body.appendChild(renderer.domElement); 
+
+            //lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white light
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(1, 1, 1).normalize();
+            scene.add(directionalLight);
+
+            const textureLoader = new THREE.TextureLoader();
+            const texture = textureLoader.load('textures/mid_floor.jpg');
+            const wallTexture = textureLoader.load('textures/stone_wall.jpg');
+           
+            const materials = [
+                new THREE.MeshBasicMaterial({ map: wallTexture, side: THREE.DoubleSide }), // Right
+                new THREE.MeshBasicMaterial({ map: wallTexture, side: THREE.DoubleSide }), // Left
+                new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }), // Top
+                new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide }), // Bottom
+                new THREE.MeshBasicMaterial({ map: wallTexture, side: THREE.DoubleSide, transparent: true, opacity: 0 }), // Front
+                new THREE.MeshBasicMaterial({ map: wallTexture, side: THREE.DoubleSide })  // Back
+            ];
+
+            const geometry = new THREE.BoxGeometry(width, height, length);
+            const room = new THREE.Mesh(geometry, materials);
+            scene.add(room);
+
+            room.position.y = height / 2;
+
+            camera.position.set(0, 150, 300);
+
+            orbitControls = new OrbitControls(camera, renderer.domElement);
+            orbitControls.enableDamping = true;
+            orbitControls.dampingFactor = 0.25;
+            orbitControls.enableZoom = true;
+
+            
+            const maxPolarAngle = Math.PI / 2.1; 
+            const minPolarAngle = Math.PI / 5;   
+            orbitControls.maxPolarAngle = maxPolarAngle;
+            orbitControls.minPolarAngle = minPolarAngle;
+            orbitControls.maxDistance = 700;
+
+
+
+            function animate() {
+                requestAnimationFrame(animate);
+                orbitControls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            canvas.getElement().style.display = 'none';
+        });
+
+        
+
+
+
+
+        
+
+
+
+        document.getElementById('addModelButton').addEventListener('click', () => {
+    if (!selectedModelPath) {
+        alert('Lütfen katalogdan bir model seçin!');
+        return;
+    }
+
+    const roomHeight = 150;
+
+    loader.load(
+        selectedModelPath,
+        (gltf) => {
+            const newModel = gltf.scene;
+
+            // Modelin bounding box'unu al ve boyutlarını hesapla
+            const boundingBox = new THREE.Box3().setFromObject(newModel);
+            const center = boundingBox.getCenter(new THREE.Vector3());
+            newModel.position.sub(center); // Modeli merkezle
+            const modelSize = new THREE.Vector3();
+            boundingBox.getSize(modelSize);
+
+            // Modele ölçekleme uygula (yüksekliğe göre)
+            const scaleFactor = (roomHeight * 0.4) / modelSize.y;
+            newModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+            // Modelin pozisyonunu düzelt (zemine oturt)
+            boundingBox.setFromObject(newModel);
+            const modelHeight = boundingBox.min.y;
+            newModel.position.y -= modelHeight;
+
+            // Varsayılan model pozisyonu
+            newModel.position.set(0, 0, 0);
+
+            // Sahneye ekle ve modeller listesine dahil et
+            scene.add(newModel);
+            objects.push(newModel);
+
+            // Raycaster ve fare etkileşimi için alt nesneleri işaretle
+            newModel.traverse((child) => {
+                if (child.isMesh) {
+                    child.userData.selected = false; // Başlangıçta seçilmemiş
+                }
+            });
+
+            // DragControls ile sürükleme desteği ekle
+            const dragControls = new DragControls(objects, camera, renderer.domElement);
+
+            dragControls.addEventListener('dragstart', () => {
+                orbitControls.enabled = false;
+            });
+
+            dragControls.addEventListener('drag', (event) => {
+                orbitControls.enabled = false;
+                event.object.position.y = 0; // Sürüklerken zemine sabitle
+            });
+
+            dragControls.addEventListener('dragend', () => {
+                orbitControls.enabled = true;
+            });
+
+            console.log('Model başarıyla yüklendi ve sahneye eklendi!');
+        },
+        (xhr) => {
+            console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
+        },
+        (error) => {
+            console.error('An error occurred while loading the model:', error);
+        }
+    );
+});
+
+// Seçili modeli tutmak için
+let selectedModel = null;
+
+// === Raycaster ve Fare Etkileşimi ===
+// Raycaster ve fare pozisyonu
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+// Fare tıklama olayını dinle
+window.addEventListener('click', (event) => {
+    // Fare pozisyonunu (-1 ile 1 arasında)
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Raycaster'ı güncelle
+    raycaster.setFromCamera(mouse, camera);
+
+    // Raycaster ile kesişen nesneleri bul
+    const intersects = raycaster.intersectObjects(objects, true);
+
+    if (intersects.length > 0) {
+        // İlk kesişen nesnenin kök modelini al
+        let selectedObject = intersects[0].object;
+        while (selectedObject.parent && selectedObject.parent.type !== 'Scene') {
+            selectedObject = selectedObject.parent; // Köke kadar çık
+        }
+
+        // Daha önce seçili bir model varsa, seçim durumunu sıfırla
+        if (selectedModel && selectedModel !== selectedObject) {
+            toggleSelection(selectedModel); // Seçimi kaldır
+        }
+
+        // Yeni modeli seç
+        toggleSelection(selectedObject);
+        selectedModel = selectedObject.userData.selected ? selectedObject : null;
+
+        // Seçili model varsa butonları göster
+        if (selectedModel) {
+            document.getElementById('rotationButtons').style.display = 'flex';
+        } else {
+            document.getElementById('rotationButtons').style.display = 'none';
+        }
+    }
+});
+
+// Seçim durumunu değiştiren fonksiyon
+function toggleSelection(object) {
+    if (object.userData.selected) {
+        // Zaten seçiliyse seçimden çıkar
+        object.userData.selected = false;
+        object.traverse((child) => {
+            if (child.isMesh) {
+                child.material.emissive = new THREE.Color(0x000000); // Varsayılan renk
+            }
+        });
+        console.log('Model seçimden kaldırıldı:', object);
+    } else {
+        // Seçili değilse seç
+        object.userData.selected = true;
+        object.traverse((child) => {
+            if (child.isMesh) {
+                child.material.emissive = new THREE.Color(0xff0000); // Seçili renk
+            }
+        });
+        console.log('Model seçildi:', object);
+    }
+}
+
+
+
+
+
+
+
+// === Modeli Döndürmek İçin Butonları Dinle ===
+document.getElementById('rotateLeftButton').addEventListener('click', () => {
+            if (selectedModel) {
+                selectedModel.rotation.y += 0.4; // Saat yönünün tersine döndür
+                console.log('Model sola döndürüldü');
+            }
+        });
+
+        document.getElementById('rotateRightButton').addEventListener('click', () => {
+            if (selectedModel) {
+                selectedModel.rotation.y -= 0.4; // Saat yönünde döndür
+                console.log('Model sağa döndürüldü');
+            }
+        });
+
+
+
+  // Delete Model butonunun işlevi
+document.getElementById('deleteModelButton').addEventListener('click', () => {
+  if (!selectedModel) {
+    alert('Silinecek bir model yok!');
+    return;
+  }
+
+  // Sahneden seçili modeli kaldır
+ removeModel(selectedModel);
+
+  renderer.render(scene, camera);
+  
+  // objects listesinden modeli çıkar
+  const index = objects.indexOf(selectedModel);
+  if (index > -1) {
+    objects.splice(index, 1);
+  }
+
+  console.log('Model silindi:', selectedModel);
+
+  // Seçimi sıfırla
+  selectedModel = null;
+  
+});
+
+//modeli tüm alt nesneleriyle birlikte kaldırıyor
+function removeModel(model) {
+  if (model.parent) {
+    model.parent.remove(model);
+  }
+}
+    </script>
+</body>
+</html>

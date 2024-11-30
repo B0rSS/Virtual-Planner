@@ -1,0 +1,369 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow-x: hidden;
+  font-family: Arial, sans-serif;
+}
+
+#canvas {
+  display: block;
+}
+
+/* Hamburger simge için stil */
+#menuToggle {
+position: absolute;
+top: 20px;
+left: 20px;
+z-index: 15;
+cursor: pointer;
+}
+
+#toggleIcon {
+width: 30px;
+height: 20px;
+position: relative;
+display: flex;
+flex-direction: column;
+justify-content: space-between;
+}
+
+#toggleIcon::before,
+#toggleIcon::after,
+#toggleIcon div {
+content: '';
+width: 100%;
+height: 4px;
+background-color: #333;
+border-radius: 2px;
+transition: all 0.3s ease;
+}
+
+/* Açık durumdaki hamburger simgesi */
+#toggleIcon.open::before {
+transform: translateY(8px) rotate(45deg);
+background-color: #007bff; /* Daha belirgin renk */
+}
+
+#toggleIcon.open::after {
+transform: translateY(-8px) rotate(-45deg);
+background-color: #007bff; /* Daha belirgin renk */
+}
+
+/* Orta çubuğu gizle */
+#toggleIcon.open div {
+opacity: 0;
+transform: scale(0.5); /* Hafif küçültme */
+}
+
+/* Hover efektleri */
+#menuToggle:hover #toggleIcon::before,
+#menuToggle:hover #toggleIcon::after {
+background-color: #0056b3; /* Hover rengini eşitle */
+}
+
+#controls {
+position: absolute;
+top: 20px;
+left: 20px;
+background-color: #ffffff;
+padding: 20px;
+border: 1px solid #ddd;
+border-radius: 12px;
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+width: 20%; /* Daha dar bir genişlik */
+z-index: 10;
+font-family: Arial, sans-serif;
+overflow: hidden;
+}
+
+.hidden {
+max-height: 0;
+opacity: 0;
+pointer-events: none;
+}
+
+.visible {
+max-height: 500px;
+opacity: 1;
+}
+
+
+.control-group {
+margin-bottom: 15px;
+}
+
+.control-group label {
+font-size: 14px;
+font-weight: bold;
+color: #555;
+margin-bottom: 8px;
+display: block;
+}
+
+.control-group input {
+width: 100%;
+padding: 8px; /* Daha dar padding */
+font-size: 14px;
+border: 1px solid #ddd;
+border-radius: 6px;
+box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.control-group input:focus {
+border-color: #80bdff;
+box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 0 8px rgba(128, 189, 255, 0.6);
+outline: none;
+}
+
+button {
+background-color: #007bff;
+color: white;
+border: none;
+padding: 10px; /* Daha küçük padding */
+width: 100%;
+cursor: pointer;
+font-size: 14px; /* Daha küçük font */
+font-weight: bold;
+border-radius: 8px;
+transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+button:hover {
+background-color: #0056b3;
+transform: translateY(-2px);
+}
+
+button:active {
+transform: translateY(1px);
+}
+
+#deleteRectButton {
+background-color: #ff4d4f;
+display: none;
+}
+
+#deleteRectButton:hover {
+background-color: #d9363e;
+}
+
+#create3DRoom,
+#switchTo2D {
+display: none;
+}
+
+#create3DRoom:hover {
+background-color: #6c757d;
+}
+
+#dynamicDimensions {
+margin-top: 15px;
+padding: 10px;
+background-color: #f8f9fa;
+border: 1px solid #ddd;
+border-radius: 8px;
+font-size: 13px; /* Daha küçük font */
+text-align: center;
+color: #333;
+font-weight: bold;
+box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.control-group:last-child {
+margin-bottom: 0;
+}
+/***************************************************************************************************/
+
+/* Butonların stilini ayarla */
+.rotation-buttons {
+position: fixed;
+top: 10px;
+left: 50%;
+transform: translateX(-50%);
+z-index: 1000;
+display: flex;
+gap: 10px;
+}
+
+.rotation-buttons button {
+padding: 10px 20px;
+font-size: 16px;
+font-weight: bold;
+background-color: #007bff;
+color: white;
+border: none;
+border-radius: 5px;
+cursor: pointer;
+box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.3);
+transition: background-color 0.3s;
+}
+
+.rotation-buttons button:hover {
+background-color: #0056b3;
+}
+
+
+
+
+
+/******************************************************************************/
+
+/* Açma düğmesi */
+.open-catalog {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #333;
+  color: white;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  z-index: 1000;
+  font-size: 16px;
+  width: 10%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+
+
+/* Sağ panelin stili */
+.catalog-container {
+overflow-y: auto; /* Taşan içerikler kaydırılabilir */
+  position: fixed;
+  top: 0;
+  right: -30%;
+  width: 25%;
+  height: 100%;
+  background-color: #f8f8f8;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+  transition: right 0.3s ease;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.catalog-container.open {
+  right: 0;
+}
+
+
+.catalog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: #333;
+  color: white;
+}
+
+/* Kapatma düğmesi */
+.catalog-header button { 
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 5;
+  padding: 10px 5px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Filtre bölümü */
+.filters {
+  padding: 15px;
+  border-bottom: 1px solid #ddd;
+}
+
+.filters h4 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.filters select {
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+  margin-bottom: 15px;
+}
+
+/* Ürün listesi */
+.product-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+  margin-bottom: 50px;
+}
+
+.product {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: white;
+}
+
+.product img {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  margin-right: 10px;
+  border-radius: 5px;
+}
+
+.product h5 {
+  margin: 0;
+  font-size: 14px;
+}
+
+
+/* Kontrol düğmeleri (Katalog içi) */
+#custom-controls.catalog-controls {
+padding: 15px;
+top:90%;
+bottom:0%;
+border-top: 1px solid #ddd;
+background-color: #f1f1f1;
+display: flex;
+justify-content: space-between;
+gap: 10px;
+}
+
+
+#custom-controls.catalog-controls button {
+flex: 1;
+padding: 15px, 20px;
+bottom:0px;
+font-size: 13px;
+font-weight: bold;
+border: none;
+border-radius: 8px;
+background: linear-gradient(135deg, #007bff, #0056b3);
+background-color: #007bff;
+color: white;
+cursor: pointer;
+box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+
+#custom-controls.catalog-controls .catalog-button:hover {
+background-color: #0056b3;
+box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.product.selected {
+border: 2px solid #007bff;
+background-color: #eaf4ff;
+border-radius: 5px;
+}
+
+
+
+
+
+
+
